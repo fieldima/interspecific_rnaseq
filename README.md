@@ -1,3 +1,5 @@
+# This fork of the data will be used in my gene expression adequacy project. I will assess the adequacy of the Ornstein-Uhlenbeck model for the dataset used in this [paper](https://academic.oup.com/mbe/article/35/8/2005/5000155)
+
 # interspecific_rnaseq
 
 These are scripts used to assemble data and analyze gene expression evolution in 'The evolution of gene expression underlying vision loss in cave animals'
