@@ -42,15 +42,16 @@ format_expr_data <- function (avgdat) {
 }
 
 #Use treedata() to trim any extra values
-avg_tree_data <- treedata(tree, format_expr_data(avg_dat), sort = TRUE)
+avg_tree_data <- format_expr_data(avg_dat) %>% as.matrix()
 input <- list(avg_tree_data, dat_SE)
 
 #Run relative fit
 runFC <- function ( tree_dat, SE ){
-  fitResults <- vector(mode = "list", length = ncol(dat))
-  phy <- tree_dat$phy
-  data <- tree_dat$data
-  for(j in 1:ncol(dat)){
+  fitResults <- vector(mode = "list", length = 3560)
+  tdf <- treedata(tree, tree_dat, sort = TRUE)
+  phy <- tdf$phy
+  data <- tdf$data
+  for(j in 1:3560){
     fitBM <- fitContinuous(phy, data[,j], SE[[2]][[j]], model = "BM")
     fitOU <- fitContinuous(phy, data[,j], SE[[2]][[j]], model = "OU")
     fitEB <- fitContinuous(phy, data[,j], SE[[2]][[j]], model = "EB")
@@ -77,41 +78,17 @@ model_count <- function (fit) {
 }
 
 
-#Run just OU
-runOU <- function ( tree_dat, SE ){
-  fitResults <- vector(mode = "list", length = ncol(dat))
-  phy <- tree_dat$phy
-  data <- tree_dat$data
-  for(j in 1:ncol(dat)){
-    fitOU <- fitContinuous(phy, data[,j], SE[[2]][[j]], model = "OU")
-    fitResults[j] <- fitOU
-  }
-  fitResults
+#Fix and run
+fix_and_run <- function(fit){
+  class(fit) <- "gfit"
+  arb <- arbutus(fit)
+  arb
 }
 
 run_arb <- function (fits){
-  arby <- vector("list", length = length(fits))
-  count = 1
-  for(f in fits){
-    class(f) <- "gfit"
-    arby[[count]] <- arbutus(f)
-    count = count + 1
-  }
+  arby <- mclapply(fits, fix_and_run, mc.cores = 6)
   arby_df <- map_df(arby, pvalue_arbutus)
   arby_df
-}
-
-total_process_OU <- function (tree_list){
-  fit <- runOU(tree_list[[1]], tree_list[[2]])
-  fit_name <- "arbutus/OU/OU_fit"
-  saveRDS(fit, file = fit_name)
-  result <- run_arb(fit)
-  rds_name <- "arbutus/OU/OU_pvals"
-  saveRDS(result, file = rds_name)
-  result %>% pivot_longer(cols = everything(), names_to = "tstat") %>%
-    ggplot(aes(value)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~tstat, nrow = 1) + theme_bw()
-  pval_name <- "arbutus/OU/OU_arbutus.png"
-  ggsave(pval_name)
 }
 
 #Run best fit
@@ -132,6 +109,4 @@ total_process_best <- function (tree_list){
   ggsave(pval_name)
 }
 
-#Parallelize
-mclapply(input, total_process_OU, mc.cores = 6)
-mclapply(input, total_process_best, mc.cores = 6)
+total_process_best(input)
