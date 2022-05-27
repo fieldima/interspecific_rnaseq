@@ -17,6 +17,8 @@ well as multiple evolution rates. So an OUMA or OUMV model should be the
 most adequate. Failing that, an OU model of evolution should be mostly
 adequate.
 
+    ## Joining, by = c("inade", "n", "prop", "model")
+
 ![](Analysis_files/figure-gfm/Figure1-1.png)<!-- -->
 
 **Figure 1.** Number of genes by number of inadequacies. Most genes were
@@ -54,6 +56,8 @@ more? This may show inadequacies when the “true” model may have multiple
 rate values, but is being coerced to a model with a single rate value. I
 next wanted to see the relative contribution of each test statistic to
 overall adequacy of a model.
+
+    ## Joining, by = c("c.var", "s.var", "s.asr", "s.hgt", "d.cdf", "model")
 
 ![](Analysis_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
