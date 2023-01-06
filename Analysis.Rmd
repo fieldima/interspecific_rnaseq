@@ -27,7 +27,16 @@ pvals_mut2 <- pvals_bms %>%
   transmute(inade = c.less + sv.less + sa.less + sh.less + d.less) %>% count(inade) %>%
   mutate(prop = n/sum(n)) %>% mutate(inade = as.character(inade), model = "w/ BMS")
 
-pvals_join <- full_join(pvals_mut, pvals_mut2)
+
+
+pvals_motmot <- readRDS("arbutus/best/motmot_best_pvals_bms") %>% select(!m.sig)
+pvals_mut3 <- pvals_motmot %>%
+  transmute(c.less = c.var <= 0.05, sv.less = s.var <= 0.05, sa.less = s.asr <= 0.05,
+            sh.less = s.hgt <= 0.05 & !is.na(s.hgt), d.less = d.cdf <= 0.05) %>%
+  transmute(inade = c.less + sv.less + sa.less + sh.less + d.less) %>% count(inade) %>%
+  mutate(prop = n/sum(n)) %>% mutate(inade = as.character(inade), model = "w/ Motmot")
+
+pvals_join <- full_join(pvals_mut, pvals_mut2) %>% full_join(pvals_mut3)
 
 pvals_join %>% ggplot(aes(x = inade, y = n, fill = inade)) + geom_bar(stat = "identity") + 
   xlab("Number of inadequacies") + ylab("Number of genes") +
@@ -65,8 +74,12 @@ test2 <- pvals_bms %>% drop_na() %>%
   transmute(c.var = c.var <= 0.05, s.var = s.var <= 0.05,
               s.asr = s.asr <= 0.05, s.hgt = s.hgt <= 0.05 & !is.na(s.hgt),
               d.cdf = d.cdf <= 0.05) %>% drop_na() %>% summarise(across(.fns = ~sum(.x, na.rm = TRUE))) %>% mutate(model = "w/ BMS")
+test3 <- pvals_motmot %>% drop_na() %>%
+  transmute(c.var = c.var <= 0.05, s.var = s.var <= 0.05,
+              s.asr = s.asr <= 0.05, s.hgt = s.hgt <= 0.05 & !is.na(s.hgt),
+              d.cdf = d.cdf <= 0.05) %>% drop_na() %>% summarise(across(.fns = ~sum(.x, na.rm = TRUE))) %>% mutate(model = "motmot")
 
-test_plot <- full_join(test, test2)
+test_plot <- full_join(test, test2) %>% full_join(test3) %>% mutate(model = as.factor(model), model = fct_relevel(model, "w/o BMS", "w/ BMS", "motmot"))
 
 figure2 <- test_plot %>% pivot_longer(cols = c(-model), names_to = "test statistic") %>% 
   ggplot(aes(x = `test statistic`, y = value/sum(value), fill = `test statistic`)) + geom_col() + geom_text(aes(label = round(value/sum(value), digits = 2))) + ylab("Percent of inadequacies") + theme_bw() + facet_wrap(~model)
@@ -77,6 +90,37 @@ figure2
 **Figure 3.** Relative contribution of each test statistic to inadequacies.
 
 As shown by the figure above, s.asr and c.var are the main contributors to inadequacy of a simple single-optima and single rate OU model. C.var being a significant contributor supports the idea that the inadequacy is due to coercing a multi-rate process to a single rate, as this test statistic is violated during those circumstances as well. This suggests that an OUMV model would be most appropriate for the data.
+
+```{r}
+pvals_rpkm <- readRDS("arbutus/best/best_pvals_rpkm_log") %>% select(!m.sig)
+pvals_mut_rpkm <- pvals_rpkm %>%
+  transmute(c.less = c.var <= 0.05, sv.less = s.var <= 0.05, sa.less = s.asr <= 0.05,
+            sh.less = s.hgt <= 0.05 & !is.na(s.hgt), d.less = d.cdf <= 0.05) %>%
+  transmute(inade = c.less + sv.less + sa.less + sh.less + d.less) %>% count(inade) %>%
+  mutate(prop = n/sum(n)) %>% mutate(inade = as.character(inade), model = "RPKM")
+
+pvals_tpm <- readRDS("arbutus/best/best_pvals_tpm_log") %>% select(!m.sig)
+pvals_mut_tpm <- pvals_tpm %>%
+  transmute(c.less = c.var <= 0.05, sv.less = s.var <= 0.05, sa.less = s.asr <= 0.05,
+            sh.less = s.hgt <= 0.05 & !is.na(s.hgt), d.less = d.cdf <= 0.05) %>%
+  transmute(inade = c.less + sv.less + sa.less + sh.less + d.less) %>% count(inade) %>%
+  mutate(prop = n/sum(n)) %>% mutate(inade = as.character(inade), model = "TPM")
+
+pvals_join <- full_join(pvals_mut_tpm, pvals_mut_rpkm)
+
+pvals_join %>% ggplot(aes(x = inade, y = n, fill = inade)) + geom_bar(stat = "identity") + 
+  xlab("Number of inadequacies") + ylab("Number of genes") +
+  ggtitle("Amount of genes by number of inadequacies") + geom_text(aes(label = round(prop, digits = 2))) +
+  theme_bw() + facet_wrap(~model)
+
+tpm_hist <- pvals_tpm %>% mutate(model = "TPM")
+rpkm_hist <- pvals_rpkm %>% mutate(model = "RPKM")
+pvals_hist_join <- full_join(tpm_hist, rpkm_hist)
+
+pvals_hist_join %>% pivot_longer(cols = !c(model), names_to = "tstat") %>%
+    ggplot(aes(value)) + geom_histogram(aes(y = ..density..)) + facet_grid(rows = vars(model), cols = vars(tstat)) + theme_bw() + geom_vline(xintercept = 0.05, color = "red")
+
+```
 
 ## Conclusion
 
